@@ -2,6 +2,14 @@ module main
 
 import os
 
+fn max(x int, y int) int {
+    return match x > y { true {x} false {y} }
+}
+
+fn pop(buffer string) (u8, string) {
+    return buffer[0], buffer[1..]
+}
+
 fn output(destination string, data string) {
 	if destination == '||STDOUT||' {
 		print("$data")
@@ -16,15 +24,30 @@ fn output(destination string, data string) {
 	}
 }
 
-fn dump_info(pointer int, stack [30000]u8, destination string) {
-	mut p := 29999
-	for p != 0 && stack[p] == 0 { p -= 1 }
-	mut relevant_stack := []u8{}
-	relevant_stack = stack[0..p]
+fn print_stack(stack [30000]u8, highest int) string {
+    mut out := "\t"
+    mut line := 0
+    
+    for v in stack[0..highest + 1] {
+        out += "0x"
+        out += v.hex()
+        out += " "
+        line += 1
+        
+        if line > 7 {
+            line = 0
+            out += "\n\t"
+        }
+    }
+    return out
+}
+
+fn dump_info(pointer int, highest int, stack [30000]u8, destination string) {
+	printed_stack := print_stack(stack, highest)
 
 	output(destination, '\n[<]\n')
 	output(destination, "Pointer: $pointer\n")
-	output(destination, "Stack:\n$relevant_stack\n")
+	output(destination, "Stack:\n$printed_stack\n\n")
 }
 
 // from https://github.com/alexprengere/ python implementation
@@ -49,6 +72,76 @@ fn make_jump_table(data string) map[int]int {
 	return table
 }
 
+fn eval(ch u8, mut stack [30000]u8, p int, ip int, h int, jump_table map[int]int, b string, debug_out string) (int, int, int, string) {
+    
+    // TODO: clean all stuff like this
+    mut pointer := p
+    mut ipointer := ip
+    mut highest := h
+    mut buffer := b.str()
+    
+    match ch.ascii_str() {
+        '+' {
+            stack[pointer] += 1
+            if pointer > highest {highest = pointer}
+        }
+        
+        '-' {
+            stack[pointer] -= 1
+            if pointer > highest {highest = pointer}
+        }
+        
+        '>' { pointer += 1 }
+        '<' { pointer -= 1 }
+        '.' { output(debug_out, stack[pointer].ascii_str()) }
+        '*' { output(debug_out, "0x" + stack[pointer].hex() + " ") }
+        ',' { 
+            if buffer == "" {
+                buffer = os.input("")
+                buffer += "\x00"
+            }
+            
+            stack[pointer], buffer = pop(buffer)
+            
+            if pointer > highest {highest = pointer}
+        }
+        
+        '[' { if stack[pointer] == 0 { ipointer = jump_table[ipointer] }}
+        ']' { if stack[pointer] != 0 { ipointer = jump_table[ipointer] }}
+        '#' { dump_info(pointer, highest, stack, debug_out) }
+        else { }
+    }
+
+    pointer %= 30000
+    if pointer < 0 { pointer = 29999 }
+    stack[pointer] %= 256
+
+    ipointer += 1
+    
+    return pointer, ipointer, highest, buffer
+}
+
+fn loop_eval(data string, mut stack [30000]u8, p int, h int, debug_out string) (int, int) {
+    if data.count('[') != data.count(']') {
+        output(debug_out, "ERROR: Mismatched braces\n")
+        return p, h
+    }
+    
+    jump_table := make_jump_table(data)
+    
+    mut buffer := "" 
+    
+    mut pointer := p
+    mut highest := h
+    mut ipointer := 0
+    
+    for ipointer < data.len {
+        pointer, ipointer, highest, buffer = eval(data[ipointer], mut stack, pointer, ipointer, highest, jump_table, buffer, debug_out)
+    }
+    
+    return p, highest
+}
+
 fn main() {
 	args := os.args_after('')
 	
@@ -63,81 +156,27 @@ fn main() {
 		}
 		
 		data := os.read_file(args[1]) or {
-			output(debug_out, "ERROR: Couldn't load input file ${args[1]};\n\n$err")
+        output(debug_out, "ERROR: Couldn't load input file ${args[1]};\n\n$err")
 			exit(2)
 		}
 		
-		if data.count('[') != data.count(']') {
-			output(debug_out, "ERROR: Mismatched braces")
-			exit(1)
-		}
-
-		jump_table := make_jump_table(data)
-		
 		mut stack := [30000]u8{}
-		mut pointer := 0
-		
-		mut ipointer := 0
-		for ipointer < data.len {
-			match data[ipointer].ascii_str() {
-				'+' { stack[pointer] += 1 }
-				'-' { stack[pointer] -= 1 }
-				'>' { pointer += 1 }
-				'<' { pointer -= 1 }
-				'.' { output(debug_out, stack[pointer].ascii_str()) }
-				',' { stack[pointer] = os.get_raw_stdin()[0] }
-				'[' { if stack[pointer] == 0 { ipointer = jump_table[ipointer] }}
-				']' { if stack[pointer] != 0 { ipointer = jump_table[ipointer] }}
-				'#' { dump_info(pointer, stack, debug_out) }
-				else { }
-			}
-			
-			pointer %= 30000
-			if pointer < 0 { pointer = 29999 }
-			stack[pointer] %= 256
-			
-			ipointer += 1
-		}
-		
+        loop_eval(data, mut stack, 0, 0, debug_out)
 		
 	} else {	
+        debug_out := '||STDOUT||'
 		mut stack := [30000]u8{}
 		mut pointer := 0
-		
+		mut highest := 0
+        
 		mut data := ''
 		
+        println("Type 'exit' to exit")
+        
 		for data != 'exit' {
-			debug_out := '||STDOUT||'
 			data = os.input('[>] ')
 
-			if data.count('[') != data.count(']') {
-				output('||STDOUT||', "ERROR: Mismatched braces\n")
-				continue
-			}
-			
-			jump_table := make_jump_table(data)
-			
-			mut ipointer := 0
-			for ipointer < data.len {
-				match data[ipointer].ascii_str() {
-					'+' { stack[pointer] += 1 }
-					'-' { stack[pointer] -= 1 }
-					'>' { pointer += 1 }
-					'<' { pointer -= 1 }
-					'.' { output(debug_out, stack[pointer].ascii_str()) }
-					',' { stack[pointer] = os.get_raw_stdin()[0] }
-					'[' { if stack[pointer] == 0 { ipointer = jump_table[ipointer] }}
-					']' { if stack[pointer] != 0 { ipointer = jump_table[ipointer] }}
-					'#' { dump_info(pointer, stack, debug_out) }
-					else { }
-				}
-				
-				pointer %= 30000
-				if pointer < 0 { pointer = 29999 }
-				stack[pointer] %= 256
-				
-				ipointer += 1
-			}
+			pointer, highest = loop_eval(data, mut stack, pointer, highest, debug_out)
 		}
 	}
 }

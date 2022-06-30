@@ -1,7 +1,7 @@
 Module {
 	name: 'brin'
-	description: 'A BF interpreter that supports dumping the memory to an output file.'
-	version: '0.1.0'
+	description: 'A Brain* interpreter with very light modifications.'
+	version: '1.1.0'
 	license: 'MIT'
 	dependencies: []
 }

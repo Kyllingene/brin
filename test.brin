@@ -1,56 +1,48 @@
-starts at 0 so this block is skipped
-[
-    test file demonstrating each operator
-    takes 3 characters of user input, then outputs it again inside parens
-    
-    unrecognized characters are treated like comments, and "header" comments like these can be used
-    if you want recognized characters to be ignored as well (+, -, etc.)
-    
-    '#' symbol dumps the pointer and relevant stack
-]
-
-initialize 41 into cell 2
->>+++++++++++++++++++++++++++++++++++++++++
-*
-
-duplicate cell 2 into cells 0 and 1
-[-<+<+>>]
-*
-
-set cell 0 to 40 [opening paren]
+    p=0
+    init parens
+    >>+++++++++++++++++++++++++++++++++++++++++
+    [-<+<+>>]
 <<-
-#
 
+    p=0
+    get input
+>>>>>,[>,]
 
+    p=x
+    store string end
+>++<^>--<
 
-get user input
+    p=x
+    get 2nd input
+>,[>,]
 
-    skip first two cells
->>
+    p=y
+    return to 4
+<[<]<[<]
 
-    important to leave an initial 0 to return to
->
+    p=4
+    print newline
+<<<<------------------------------.
 
-    set cell to input until a null is reached
-,[>,]
+    p=0
+    print input
+>>>>>[.>]<[<]
 
-    return to initial zero
-<[<]
-
-
-
-print final output
-
+    p=4
+    print newline
+<<<<.
+    p=0
     print opening paren
-<<.
+++++++++++++++++++++++++++++++.
+    
+    p=0
+    print 2nd input
+>>@>[.>]
 
-    print user input
->>>[.>]
+    p=y
+    return to 4
+<[<]<[<]
 
-    return to initial zero again
-<[<]
-
+    p=4
     print closing paren
-<.
-
-#
+<<<.

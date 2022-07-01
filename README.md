@@ -9,7 +9,7 @@ It supports several debug operators, and supports the Dynamic Brain*** opset usi
 
 ### Operators
 In addition to the standard 8, there are two additional operators, useful for debugging: `#` and `*`.
- - `#` dumps the current tape pointer, along with the tape.
+ - `\`` dumps the current tape pointer, along with the tape.
  - `~` prints the current cell as a hex digit.
  - `(` and `)` delimit a string to print to output (USE FOR DEBUG ONLY!)
  - `^` writes the pointer to the cell indicated by the current cell + the neighboring one.

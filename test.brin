@@ -31,6 +31,7 @@
     p=4
     print newline
 <<<<.
+
     p=0
     print opening paren
 ++++++++++++++++++++++++++++++.

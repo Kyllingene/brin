@@ -125,7 +125,7 @@ fn eval(ch u8, mut tape [30000]u8, p int, ip int, h int, db bool, jump_table map
         
         '[' { if tape[pointer] == 0 { ipointer = jump_table[ipointer] }}
         ']' { if tape[pointer] != 0 { ipointer = jump_table[ipointer] }}
-        '``' { dump_info(pointer, highest, tape, debug_out) }
+        ';' { dump_info(pointer, highest, tape, debug_out) }
         '^' {
             tp := from_u8s(tape[pointer], tape[(pointer+1) % 30000])
             tape[tp], tape[tp+1] = to_u8s(pointer)

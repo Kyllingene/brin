@@ -35,7 +35,7 @@ fn output(destination string, data string) {
 	} else {
 		prev_data := os.read_file(destination) or { '' }
 		
-		os.write_file(destination, prev_data + '\n' + data) or {
+		os.write_file(destination, prev_data + data) or {
 			eprintln("\n\nERROR: Couldn't write to output file $destination;\n\n$err")
 			exit(2)
 		}

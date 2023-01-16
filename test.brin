@@ -47,3 +47,10 @@
     p=4
     print closing paren
 <<<.
+
+ERROR: Couldn't load input file --;
+
+failed to open file "--"
+ERROR: Couldn't load input file --;
+
+failed to open file "--"

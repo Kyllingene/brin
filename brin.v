@@ -2,6 +2,14 @@ module main
 
 import os
 
+struct Eval {
+    mut: pointer int
+         ipointer int
+         highest int
+         is_debug_print bool
+         buffer string
+}
+
 fn max(x int, y int) int {
     return match x > y { true {x} false {y} }
 }
@@ -15,13 +23,14 @@ fn to_u8s(pointer int) (u8, u8) {
 }
 
 fn from_u8s(v1 u8, v2 u8) int {
-    //println(int((v1 << 4) | v2))
     return int((v1 << 4) | v2)
 }
 
+// TODO: buffer this
 fn output(destination string, data string) {
-	if destination == '||STDOUT||' {
+	if destination == '1' {
 		print("$data")
+        os.flush()
 		
 	} else {
 		prev_data := os.read_file(destination) or { '' }
@@ -87,94 +96,76 @@ fn make_jump_table(data string) map[int]int {
 	return table
 }
 
-fn eval(ch u8, mut tape [30000]u8, p int, ip int, h int, db bool, jump_table map[int]int, b string, debug_out string) (int, int, int, string, bool) {
-    
-    // TODO: clean all stuff like this
-    mut pointer := p
-    mut ipointer := ip
-    mut highest := h
-    mut buffer := b.str()
-    mut is_debug_print := db
-        
+fn eval(ch u8, mut tape [30000]u8, mut data Eval, jump_table map[int]int, debug_out string) {
     match ch.ascii_str() {
         '+' {
-            tape[pointer] += 1
-            if pointer > highest {highest = pointer}
+            tape[data.pointer] += 1
+            if data.pointer > data.highest {data.highest = data.pointer}
         }
         
         '-' {
-            tape[pointer] -= 1
-            if pointer > highest {highest = pointer}
+            tape[data.pointer] -= 1
+            if data.pointer > data.highest {data.highest = data.pointer}
         }
         
-        '>' { pointer += 1 }
-        '<' { pointer -= 1 }
-        '.' { output(debug_out, tape[pointer].ascii_str()) }
-        '~' { output(debug_out, pointer.str() + ": 0x" + tape[pointer].hex() + " ") }
+        '>' { data.pointer += 1 }
+        '<' { data.pointer -= 1 }
+        '.' { output(debug_out, tape[data.pointer].ascii_str()) }
+        '~' { output(debug_out, data.pointer.str() + ": 0x" + tape[data.pointer].hex() + " ") }
         ',' { 
-            if buffer == "" {
+            if data.buffer == "" {
                 //TODO: buffer = os.get_raw_stdin().bytestr()
-                buffer = os.input("")
-                buffer += "\x00"
+                data.buffer = os.input("")
+                data.buffer += "\x00"
             }
             
-            tape[pointer], buffer = pop(buffer)
+            tape[data.pointer], data.buffer = pop(data.buffer)
             
-            if pointer > highest {highest = pointer}
+            if data.pointer > data.highest {data.highest = data.pointer}
         }
         
-        '[' { if tape[pointer] == 0 { ipointer = jump_table[ipointer] }}
-        ']' { if tape[pointer] != 0 { ipointer = jump_table[ipointer] }}
-        ';' { dump_info(pointer, highest, tape, debug_out) }
+        '[' { if tape[data.pointer] == 0 { data.ipointer = jump_table[data.ipointer] }}
+        ']' { if tape[data.pointer] != 0 { data.ipointer = jump_table[data.ipointer] }}
+        ';' { dump_info(data.pointer, data.highest, tape, debug_out) }
         '^' {
-            tp := from_u8s(tape[pointer], tape[(pointer+1) % 30000])
-            tape[tp], tape[tp+1] = to_u8s(pointer)
-            if pointer+1 > highest { highest = pointer+1 }
+            tp := from_u8s(tape[data.pointer], tape[(data.pointer+1) % 30000])
+            tape[tp], tape[tp+1] = to_u8s(data.pointer)
+            if data.pointer+1 > data.highest { data.highest = data.pointer+1 }
         }
         
-        '@' { pointer = from_u8s(tape[pointer], tape[(pointer+1) % 30000]) }
-        '(' { is_debug_print = true }
+        '@' { data.pointer = from_u8s(tape[data.pointer], tape[(data.pointer+1) % 30000]) }
+        '(' { data.is_debug_print = true }
         ')' {
-            is_debug_print = false
+            data.is_debug_print = false
             print("\n")
         }
         
         else {
-            if is_debug_print {
+            if data.is_debug_print {
                 print(ch.ascii_str())
             }
         }
     }
 
-    pointer %= 30000
-    if pointer < 0 { pointer = 29999 }
-    tape[pointer] %= 256
+    data.pointer %= 30000
+    if data.pointer < 0 { data.pointer = 29999 }
+    tape[data.pointer] %= 256
 
-    ipointer += 1
+    data.ipointer += 1
     
-    return pointer, ipointer, highest, buffer, is_debug_print
+    // return pointer, ipointer, highest, buffer, is_debug_print
 }
 
-fn loop_eval(data string, mut tape [30000]u8, p int, h int, debug_out string) (int, int) {
+fn loop_eval(data string, mut tape [30000]u8, mut edata Eval, debug_out string) {
     if data.count('[') != data.count(']') {
         output(debug_out, "ERROR: Mismatched braces\n")
-        return p, h
     }
     
     jump_table := make_jump_table(data)
-    
-    mut buffer := "" 
-    
-    mut pointer := p
-    mut highest := h
-    mut ipointer := 0
-    mut is_debug_print := false
-    
-    for ipointer < data.len {
-        pointer, ipointer, highest, buffer, is_debug_print = eval(data[ipointer], mut tape, pointer, ipointer, highest, is_debug_print, jump_table, buffer, debug_out)
-    }
-    
-    return p, highest
+            
+    for edata.ipointer < data.len {
+        eval(data[edata.ipointer], mut tape, mut edata, jump_table, debug_out)
+    }    
 }
 
 fn main() {
@@ -187,7 +178,7 @@ fn main() {
 	} else if args.len > 1 {
 		debug_out := match true {
 			args.len > 2 { args[2] }
-			else { '||STDOUT||' }
+			else { '1' }
 		}
 		
 		data := os.read_file(args[1]) or {
@@ -196,22 +187,35 @@ fn main() {
 		}
 		
 		mut tape := [30000]u8{}
-        loop_eval(data, mut tape, 0, 0, debug_out)
+        mut edata := Eval {
+            0,
+            0,
+            0,
+            false,
+            "",
+        }
+
+        loop_eval(data, mut tape, mut edata, debug_out)
 		
-	} else {	
-        debug_out := '||STDOUT||'
-		mut tape := [30000]u8{}
-		mut pointer := 0
-		mut highest := 0
-        
+	} else {
+        debug_out := '1'
+		mut tape := [30000]u8{}        
 		mut data := ''
 		
+        mut edata := Eval {
+            0,
+            0,
+            0,
+            false,
+            "",
+        }
+
         println("Type 'exit' to exit")
         
 		for data != 'exit' {
 			data = os.input('[>] ')
 
-			pointer, highest = loop_eval(data, mut tape, pointer, highest, debug_out)
+			loop_eval(data, mut tape, mut edata, debug_out)
 		}
 	}
 }

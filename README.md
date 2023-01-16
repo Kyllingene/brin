@@ -3,7 +3,7 @@
 
 ### Introduction
 `brin` is a Brain*** interpreter written in [V](https://vlang.io). It also has a built-in REPL.
-It supports several debug operators, and supports the Dynamic Brain*** opset using an optional flag.
+It supports several debug operators, including two that handle pointer manipulation.
 
 ### Operators
 In addition to the standard 8, there are six additional operators; four for debugging, two that add functionality. 

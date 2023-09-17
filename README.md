@@ -1,6 +1,8 @@
 # brin
 ## A user-friendly Brain*** interpreter
 
+***This is no longer being developed.*** Please see its successor, [brim](https://github.com/kyllingene/brim).
+
 ### Introduction
 `brin` is a Brain*** interpreter written in [V](https://vlang.io). It also has a built-in REPL.
 It supports several debug operators, including two that handle pointer manipulation.
